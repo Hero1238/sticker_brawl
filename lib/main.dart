@@ -55,10 +55,10 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    loadData();
   }
 
-  Future<void> _loadData() async {
+  Future<void> loadData() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
       vipUnlocked = prefs.getBool('vip_unlocked') ?? false;
@@ -66,7 +66,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     });
   }
 
-  void _showOnlineDialog() {
+  void showOnlineDialog() {
     final codeCtrl = TextEditingController();
     showModalBottomSheet(
       context: context,
@@ -84,7 +84,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
               onPressed: () {
                 Navigator.pop(ctx);
                 final code = (1000 + Random().nextInt(9000)).toString();
-                Navigator.push(context, MaterialPageRoute(builder: (_) => BattleScreen(isOnline: true, isHost: true, roomCode: code, vipUnlocked: vipUnlocked, onWin: _loadData)));
+                Navigator.push(context, MaterialPageRoute(builder: (c) => BattleScreen(isOnline: true, isHost: true, roomCode: code, vipUnlocked: vipUnlocked, onWin: loadData)));
               },
               icon: const Icon(Icons.add_circle_outline),
               label: const Padding(padding: EdgeInsets.symmetric(vertical: 14), child: Text('Создать комнату', style: TextStyle(fontSize: 16))),
@@ -103,7 +103,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
               onPressed: () {
                 if (codeCtrl.text.length == 4) {
                   Navigator.pop(ctx);
-                  Navigator.push(context, MaterialPageRoute(builder: (_) => BattleScreen(isOnline: true, isHost: false, roomCode: codeCtrl.text, vipUnlocked: vipUnlocked, onWin: _loadData)));
+                  Navigator.push(context, MaterialPageRoute(builder: (c) => BattleScreen(isOnline: true, isHost: false, roomCode: codeCtrl.text, vipUnlocked: vipUnlocked, onWin: loadData)));
                 }
               },
               icon: const Icon(Icons.login),
@@ -115,7 +115,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
     );
   }
 
-  void _showVipShop() {
+  void showVipShop() {
     final promoCtrl = TextEditingController();
     showModalBottomSheet(
       context: context,
@@ -181,7 +181,7 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Chip(avatar: const Icon(Icons.emoji_events, size: 18), label: Text('Побед: $wins')),
-                  FilledButton.tonalIcon(onPressed: _showVipShop, icon: Icon(vipUnlocked ? Icons.verified : Icons.lock_open), label: Text(vipUnlocked ? 'VIP Активен' : 'VIP Пак')),
+                  FilledButton.tonalIcon(onPressed: showVipShop, icon: Icon(vipUnlocked ? Icons.verified : Icons.lock_open), label: Text(vipUnlocked ? 'VIP Активен' : 'VIP Пак')),
                 ],
               ),
               const Spacer(),
@@ -198,13 +198,13 @@ class _MainMenuScreenState extends State<MainMenuScreen> {
               Text('Выбирай мемы и сокрушай соперников', textAlign: TextAlign.center, style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: colors.onSurfaceVariant)),
               const Spacer(),
               FilledButton.icon(
-                onPressed: _showOnlineDialog,
+                onPressed: showOnlineDialog,
                 icon: const Icon(Icons.wifi_tethering),
                 label: const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Text('Играть с другом (Онлайн)', style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold))),
               ),
               const SizedBox(height: 12),
               FilledButton.tonalIcon(
-                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => BattleScreen(isOnline: false, isHost: true, roomCode: '', vipUnlocked: vipUnlocked, onWin: _loadData))),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (c) => BattleScreen(isOnline: false, isHost: true, roomCode: '', vipUnlocked: vipUnlocked, onWin: loadData))),
                 icon: const Icon(Icons.smart_toy_outlined),
                 label: const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Text('Тренировка с ботом', style: TextStyle(fontSize: 17))),
 ),
@@ -239,38 +239,38 @@ opponentConnected = true;
 } else {
 myTurn = widget.isHost;
 statusText = widget.isHost ? 'Код комнаты: ${widget.roomCode}. Ждём друга...' : 'Подключаемся к комнате ${widget.roomCode}...';
-_connectMqtt();
+connectMqtt();
 }
 }
 Future connectMqtt() async {
-client = MqttServerClient('broker.emqx.io', 'sb${Random().nextInt(999999)}')..port = 1883..keepAlivePeriod = 20..logging(on: false);
+client = MqttServerClient('broker.emqx.io', 'sb_${Random().nextInt(999999)}')..port = 1883..keepAlivePeriod = 20..logging(on: false);
 try {
 await client!.connect();
 client!.subscribe('sticker_brawl_ru/room/${widget.roomCode}', MqttQos.atLeastOnce);
 client!.updates!.listen((c) {
-final msg = c[0].payload as MqttPublishMessage;
-_handleNet(jsonDecode(MqttPublishPayload.bytesToStringAsString(msg.payload.message)));
+final msg = c.payload as MqttPublishMessage;
+handleNet(jsonDecode(MqttPublishPayload.bytesToStringAsString(msg.payload.message)));
 });
 if (!widget.isHost) {
-send({'type': 'join'});
+sendMsg({'type': 'join'});
 setState(() { opponentConnected = true; statusText = 'Друг найден! Ждём его ход...'; });
 }
-} catch () {
+} catch (e) {
 if (mounted) setState(() => statusText = 'Ошибка сети. Проверь интернет!');
 }
 }
-void _send(Map<String, dynamic> data) {
+void sendMsg(Map<String, dynamic> data) {
 if (client?.connectionStatus?.state != MqttConnectionState.connected) return;
 data['sender'] = widget.isHost ? 'host' : 'guest';
 final b = MqttClientPayloadBuilder()..addString(jsonEncode(data));
 client!.publishMessage('sticker_brawl_ru/room/${widget.roomCode}', MqttQos.atLeastOnce, b.payload!);
 }
-void _handleNet(Map<String, dynamic> data) {
+void handleNet(Map<String, dynamic> data) {
 if (data['sender'] == (widget.isHost ? 'host' : 'guest')) return;
 if (data['type'] == 'join' && widget.isHost) {
 setState(() { opponentConnected = true; statusText = 'Друг зашёл! Твой ход!'; });
 } else if (data['type'] == 'attack') {
-final card = allStickers.firstWhere((s) => s.id == data['cardId'], orElse: () => allStickers[0]);
+final card = allStickers.firstWhere((s) => s.id == data['cardId'], orElse: () => allStickers.first);
 HapticFeedback.heavyImpact();
 setState(() {
 lastCard = card;
@@ -279,10 +279,10 @@ enemyHp = min(150, enemyHp + (data['heal'] as int));
 myTurn = true;
 statusText = 'Враг ударил «${card.name}» (-${data['damage']} HP)! Твой ход!';
 });
-_checkWin();
+checkWin();
 }
 }
-void _playCard(StickerCard card) {
+void playCard(StickerCard card) {
 if (!opponentConnected || !myTurn || myHp <= 0 || enemyHp <= 0) return;
 HapticFeedback.mediumImpact();
 int dmg = card.atk + (card.abilityType == 'crit' && Random().nextBool() ? 10 : 0) + (card.abilityType == 'vip' ? 12 : 0);
@@ -294,17 +294,17 @@ myHp = min(150, myHp + heal);
 myTurn = false;
 statusText = 'Ты ударил «${card.name}» (-$dmg HP)! Ход соперника...';
 });
-if (widget.isOnline) _send({'type': 'attack', 'cardId': card.id, 'damage': dmg, 'heal': heal});
-if (_checkWin() || widget.isOnline) return;
+if (widget.isOnline) sendMsg({'type': 'attack', 'cardId': card.id, 'damage': dmg, 'heal': heal});
+if (checkWin() || widget.isOnline) return;
 Future.delayed(const Duration(milliseconds: 1000), () {
 if (!mounted || enemyHp <= 0) return;
 final bot = allStickers[Random().nextInt(4)];
 HapticFeedback.heavyImpact();
 setState(() { lastCard = bot; myHp = max(0, myHp - bot.atk); myTurn = true; statusText = 'Бот ответил «${bot.name}» (-${bot.atk} HP)! Твой ход!'; });
-_checkWin();
+checkWin();
 });
 }
-bool _checkWin() {
+bool checkWin() {
 if (enemyHp > 0 && myHp > 0) return false;
 final won = enemyHp <= 0;
 if (won) SharedPreferences.getInstance().then((p) { p.setInt('wins', (p.getInt('wins') ?? 0) + 1); widget.onWin(); });
@@ -375,14 +375,15 @@ ClipRRect(borderRadius: BorderRadius.circular(12), child: LinearProgressIndicato
 const SizedBox(height: 12),
 SizedBox(
 height: 160,
-child: ListView.separated(
+child: ListView.builder(
 scrollDirection: Axis.horizontal,
 itemCount: myDeck.length,
-separatorBuilder: (, __) => const SizedBox(width: 10),
-itemBuilder: (, i) {
-final c = myDeck[i];
-return GestureDetector(
-onTap: () => _playCard(c),
+itemBuilder: (ctx, idx) {
+final c = myDeck[idx];
+return Padding(
+padding: const EdgeInsets.only(right: 10),
+child: GestureDetector(
+onTap: () => playCard(c),
 child: AnimatedOpacity(
 duration: const Duration(milliseconds: 200),
 opacity: (myTurn && opponentConnected) ? 1.0 : 0.45,
@@ -400,6 +401,7 @@ const SizedBox(height: 6),
 Text(c.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
 Text('⚔️ ${c.atk} ATK', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 13, color: colors.primary)),
 ]),
+),
 ),
 ),
 );
