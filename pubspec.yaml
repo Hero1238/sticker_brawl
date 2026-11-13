@@ -1,0 +1,28 @@
+name: sticker_brawl
+description: Sticker Battle Material You Game
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  mqtt_client: ^10.2.0
+  shared_preferences: ^2.2.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/stickers/s1.png
+    - assets/stickers/s2.png
+    - assets/stickers/s3.png
+    - assets/stickers/s4.png
+    - assets/stickers/vip1.png
+    
